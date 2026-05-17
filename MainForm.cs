@@ -10,6 +10,7 @@ public class MainForm : Form
     private List<BalanceInfo> _lastResults = new();
     private DateTime _lastUpdatedAt;
     private bool _refreshing;
+    private bool _exiting;
 
     public MainForm()
     {
@@ -23,8 +24,11 @@ public class MainForm : Form
         _popup = new BalancePopup(_lastResults, _lastUpdatedAt);
         _popup.FormClosing += (_, e) =>
         {
-            e.Cancel = true;
-            _popup.Hide();
+            if (!_exiting)
+            {
+                e.Cancel = true;
+                _popup.Hide();
+            }
         };
 
         BuildTrayIcon();
@@ -58,12 +62,16 @@ public class MainForm : Form
         menu.Items.Add("Settings", null, (_, _) => ShowSettings());
         menu.Items.Add("Language", null, (_, _) => ShowLanguage());
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Exit", null, (_, _) =>
+        var exitItem = new ToolStripMenuItem("Exit");
+        exitItem.Click += (_, _) =>
         {
+            _exiting = true;
             _refreshTimer.Stop();
             _trayIcon.Visible = false;
-            Environment.Exit(0);
-        });
+            _popup.Close();
+            Application.Exit();
+        };
+        menu.Items.Add(exitItem);
 
         _trayIcon = new NotifyIcon
         {
@@ -213,20 +221,12 @@ public class MainForm : Form
             Text = "Save && Refresh", Size = new Size(120, 30),
             Margin = new Padding(190, 5, 0, 0),
         };
-        btnSave.Click += async (_, _) =>
+        btnSave.Click += (_, _) =>
         {
-            foreach (var box in panel.Controls.OfType<GroupBox>())
-            {
-                var provider = _config.Providers.FirstOrDefault(p => p.Name == box.Text);
-                if (provider != null)
-                {
-                    var txt = box.Controls.OfType<TextBox>().FirstOrDefault();
-                    if (txt != null) provider.ApiKey = txt.Text;
-                }
-            }
+            // TextChanged handler already keeps p.ApiKey in sync
             _config.Save();
             form.Close();
-            await RefreshAsync();
+            _ = RefreshAsync();
         };
         panel.Controls.Add(btnSave);
 
