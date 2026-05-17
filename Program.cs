@@ -23,7 +23,8 @@ static class Program
 
 public class AppConfig
 {
-    public int RefreshIntervalSeconds { get; set; } = 60;
+    public int RefreshIntervalSeconds { get; set; } = 30;
+    public string Language { get; set; } = "zh";
     public List<ProviderConfig> Providers { get; set; } = new();
 
     public static string ConfigPath
