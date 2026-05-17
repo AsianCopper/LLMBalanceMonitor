@@ -23,8 +23,6 @@ public class MainForm : Form
             _config.Save();
         }
 
-        BalancePopup.AppLanguage = _config.Language;
-
         _popup = new BalancePopup(_lastResults, _lastUpdatedAt);
         _popup.FormClosing += (_, e) =>
         {
@@ -87,7 +85,6 @@ public class MainForm : Form
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Refresh Now", null, async (_, _) => await RefreshAsync());
         menu.Items.Add("Settings", null, (_, _) => ShowSettings());
-        menu.Items.Add("Language", null, (_, _) => ShowLanguage());
 
         var autoStartItem = new ToolStripMenuItem("Run at Startup") { Checked = IsAutoStartEnabled() };
         autoStartItem.Click += (_, _) =>
@@ -173,37 +170,6 @@ public class MainForm : Form
         {
             _refreshing = false;
         }
-    }
-
-    private void ShowLanguage()
-    {
-        var form = new Form
-        {
-            Text = "Language / 语言",
-            Size = new Size(280, 175),
-            FormBorderStyle = FormBorderStyle.FixedDialog,
-            MaximizeBox = false,
-            MinimizeBox = false,
-            StartPosition = FormStartPosition.CenterParent,
-            Icon = IconGenerator.CreateAppIcon(),
-        };
-
-        var label = new Label { Text = "Select display language:", Location = new Point(20, 18), Size = new Size(220, 22) };
-        var rbZh = new RadioButton { Text = "中文", Location = new Point(20, 48), Size = new Size(220, 24), Checked = _config.Language != "en" };
-        var rbEn = new RadioButton { Text = "English", Location = new Point(20, 74), Size = new Size(220, 24), Checked = _config.Language == "en" };
-
-        var btnOk = new Button { Text = "OK", Location = new Point(100, 108), Size = new Size(80, 28) };
-        btnOk.Click += (_, _) =>
-        {
-            _config.Language = rbEn.Checked ? "en" : "zh";
-            BalancePopup.AppLanguage = _config.Language;
-            _config.Save();
-            _popup.Invalidate();
-            form.Close();
-        };
-
-        form.Controls.AddRange(new Control[] { label, rbZh, rbEn, btnOk });
-        form.ShowDialog(this);
     }
 
     private void ShowSettings()

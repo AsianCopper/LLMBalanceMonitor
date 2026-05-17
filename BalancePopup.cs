@@ -5,8 +5,6 @@ namespace LLMBalanceMonitor;
 
 public class BalancePopup : Form
 {
-    public static string AppLanguage { get; set; } = "zh";
-
     private List<BalanceInfo> _data;
     private DateTime _updatedAt;
     private int _hoverIndex = -1;
@@ -40,31 +38,31 @@ public class BalancePopup : Form
     {
         _data = data;
         _updatedAt = updatedAt;
-
         Height = CalcHeight();
         Reposition();
         Invalidate();
     }
 
-    private string HintText => AppLanguage == "en" ? "Right-click tray to add API" : "右键图标添加API";
-
     private int CalcHeight() => (_data.Count > 0 ? _data.Count : 1) * RowHeight + AccentHeight;
 
     private void Reposition()
     {
-        var screen = Screen.PrimaryScreen!.WorkingArea;
-        Location = new Point(screen.Right - PopupWidth - 12, screen.Bottom - Height - 12);
+        var screen = Screen.PrimaryScreen!;
+        var wa = screen.WorkingArea;
+        int taskbarHeight = screen.Bounds.Bottom - wa.Bottom;
+        int bottomOffset = taskbarHeight > 0 ? 0 : 48;
+        Location = new Point(wa.Right - PopupWidth - 4, wa.Bottom - Height - bottomOffset);
     }
 
     private void BuildForm()
     {
         Height = CalcHeight();
+        Width = PopupWidth;
 
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         TopMost = true;
         StartPosition = FormStartPosition.Manual;
-        Width = PopupWidth;
         BackColor = BgColor;
 
         Reposition();
@@ -92,10 +90,9 @@ public class BalancePopup : Form
 
         if (_data.Count == 0)
         {
-            string hint = HintText;
             using var hintBrush = new SolidBrush(MutedColor);
-            var hintSize = g.MeasureString(hint, HintFont);
-            g.DrawString(hint, HintFont, hintBrush,
+            var hintSize = g.MeasureString("右键图标添加API", HintFont);
+            g.DrawString("右键图标添加API", HintFont, hintBrush,
                 (Width - hintSize.Width) / 2,
                 AccentHeight + (Height - AccentHeight - hintSize.Height) / 2);
             return;
