@@ -14,8 +14,11 @@ public class MainForm : Form
     public MainForm()
     {
         _config = AppConfig.Load();
-        EnsureDefaultProviders();
-        _config.Save();
+        if (_config.Providers.Count == 0)
+        {
+            SetDefaultProviders();
+            _config.Save();
+        }
 
         _popup = new BalancePopup(_lastResults, _lastUpdatedAt);
         _popup.FormClosing += (_, e) =>
@@ -34,10 +37,8 @@ public class MainForm : Form
         Load += async (_, _) => await RefreshAsync();
     }
 
-    private void EnsureDefaultProviders()
+    private void SetDefaultProviders()
     {
-        if (_config.Providers.Count > 0) return;
-
         _config.Providers = new List<ProviderConfig>
         {
             new() { Name = "DeepSeek", ApiBase = "https://api.deepseek.com" },
