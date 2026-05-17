@@ -1,3 +1,5 @@
+using Microsoft.Win32;
+
 namespace LLMBalanceMonitor;
 
 public class MainForm : Form
@@ -20,6 +22,8 @@ public class MainForm : Form
             SetDefaultProviders();
             _config.Save();
         }
+
+        BalancePopup.AppLanguage = _config.Language;
 
         _popup = new BalancePopup(_lastResults, _lastUpdatedAt);
         _popup.FormClosing += (_, e) =>
@@ -53,14 +57,46 @@ public class MainForm : Form
         };
     }
 
+    private static bool IsAutoStartEnabled()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", false);
+        return key?.GetValue("LLMBalanceMonitor") != null;
+    }
+
+    private void ToggleAutoStart()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
+        if (key == null) return;
+
+        if (key.GetValue("LLMBalanceMonitor") != null)
+        {
+            key.DeleteValue("LLMBalanceMonitor");
+        }
+        else
+        {
+            string exePath = Environment.ProcessPath ?? Application.ExecutablePath;
+            key.SetValue("LLMBalanceMonitor", $"\"{exePath}\"");
+        }
+    }
+
     private void BuildTrayIcon()
     {
         var menu = new ContextMenuStrip();
+
         menu.Items.Add("Balances", null, (_, _) => TogglePopup());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Refresh Now", null, async (_, _) => await RefreshAsync());
         menu.Items.Add("Settings", null, (_, _) => ShowSettings());
         menu.Items.Add("Language", null, (_, _) => ShowLanguage());
+
+        var autoStartItem = new ToolStripMenuItem("Run at Startup") { Checked = IsAutoStartEnabled() };
+        autoStartItem.Click += (_, _) =>
+        {
+            ToggleAutoStart();
+            autoStartItem.Checked = IsAutoStartEnabled();
+        };
+        menu.Items.Add(autoStartItem);
+
         menu.Items.Add(new ToolStripSeparator());
         var exitItem = new ToolStripMenuItem("Exit");
         exitItem.Click += (_, _) =>
@@ -73,6 +109,7 @@ public class MainForm : Form
         };
         menu.Items.Add(exitItem);
 
+        _trayIcon?.Dispose();
         _trayIcon = new NotifyIcon
         {
             Text = "LLM Balance Monitor",
@@ -159,7 +196,9 @@ public class MainForm : Form
         btnOk.Click += (_, _) =>
         {
             _config.Language = rbEn.Checked ? "en" : "zh";
+            BalancePopup.AppLanguage = _config.Language;
             _config.Save();
+            _popup.Invalidate();
             form.Close();
         };
 
@@ -223,7 +262,6 @@ public class MainForm : Form
         };
         btnSave.Click += (_, _) =>
         {
-            // TextChanged handler already keeps p.ApiKey in sync
             _config.Save();
             form.Close();
             _ = RefreshAsync();
