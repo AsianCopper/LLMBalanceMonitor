@@ -41,26 +41,17 @@ public class AppConfig
 
     public static AppConfig Load()
     {
-        try
-        {
-            if (File.Exists(ConfigPath))
-            {
-                string json = File.ReadAllText(ConfigPath);
-                return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
-            }
-        }
-        catch { }
-        return new AppConfig();
+        if (!File.Exists(ConfigPath))
+            return new AppConfig();
+
+        string json = File.ReadAllText(ConfigPath);
+        return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
     }
 
     public void Save()
     {
-        try
-        {
-            string json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(ConfigPath, json);
-        }
-        catch { }
+        string json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(ConfigPath, json);
     }
 }
 
