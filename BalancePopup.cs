@@ -37,6 +37,13 @@ public class BalancePopup : Form
     {
         _data = data;
         _updatedAt = updatedAt;
+
+        int rowCount = Math.Max(_data.Count, 1);
+        Height = AccentHeight + rowCount * RowHeight;
+
+        var screen = Screen.PrimaryScreen!.WorkingArea;
+        Location = new Point(screen.Right - PopupWidth - 8, screen.Bottom - Height - 4);
+
         Invalidate();
     }
 
