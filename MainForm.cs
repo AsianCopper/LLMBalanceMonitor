@@ -62,7 +62,7 @@ public class MainForm : Form
             ContextMenuStrip = menu,
             Visible = true,
         };
-        _trayIcon.Click += (_, _) => ShowPopup();
+        _trayIcon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ShowPopup(); };
     }
 
     private void ShowPopup()
