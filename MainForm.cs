@@ -59,10 +59,9 @@ public class MainForm : Form
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) =>
         {
-            _trayIcon.Visible = false;
             _refreshTimer.Stop();
-            _popup.Close();
-            Application.Exit();
+            _trayIcon.Visible = false;
+            Environment.Exit(0);
         });
 
         _trayIcon = new NotifyIcon
