@@ -10,6 +10,8 @@ public class BalancePopup : Form
     private int _hoverIndex = -1;
     private static readonly Font ProviderFont = new("Segoe UI", 10, FontStyle.Regular, GraphicsUnit.Point);
     private static readonly Font BalanceFont = new("Segoe UI", 11, FontStyle.Bold, GraphicsUnit.Point);
+    private static readonly Font HintFont = new("Segoe UI", 10, FontStyle.Regular, GraphicsUnit.Point);
+    private static readonly string HintText = "右键图标添加API";
 
     private const int PopupWidth = 260;
     private const int RowHeight = 32;
@@ -38,19 +40,18 @@ public class BalancePopup : Form
         _data = data;
         _updatedAt = updatedAt;
 
-        int rowCount = Math.Max(_data.Count, 1);
-        Height = AccentHeight + rowCount * RowHeight;
-
+        Height = CalcHeight();
         var screen = Screen.PrimaryScreen!.WorkingArea;
         Location = new Point(screen.Right - PopupWidth - 8, screen.Bottom - Height - 4);
 
         Invalidate();
     }
 
+    private int CalcHeight() => (_data.Count > 0 ? _data.Count : 1) * RowHeight + AccentHeight;
+
     private void BuildForm()
     {
-        int rowCount = Math.Max(_data.Count, 1);
-        Height = AccentHeight + rowCount * RowHeight;
+        Height = CalcHeight();
 
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
@@ -85,6 +86,17 @@ public class BalancePopup : Form
         // Top accent line
         using var accentPen = new Pen(AccentColor, AccentHeight);
         g.DrawLine(accentPen, 0, 0, Width, 0);
+
+        // Empty hint
+        if (_data.Count == 0)
+        {
+            using var hintBrush = new SolidBrush(MutedColor);
+            var hintSize = g.MeasureString(HintText, HintFont);
+            g.DrawString(HintText, HintFont, hintBrush,
+                (Width - hintSize.Width) / 2,
+                AccentHeight + (Height - AccentHeight - hintSize.Height) / 2);
+            return;
+        }
 
         // Provider rows
         int y = AccentHeight;
