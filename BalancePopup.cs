@@ -5,13 +5,14 @@ namespace LLMBalanceMonitor;
 
 public class BalancePopup : Form
 {
+    public static string AppLanguage { get; set; } = "zh";
+
     private List<BalanceInfo> _data;
     private DateTime _updatedAt;
     private int _hoverIndex = -1;
     private static readonly Font ProviderFont = new("Segoe UI", 10, FontStyle.Regular, GraphicsUnit.Point);
     private static readonly Font BalanceFont = new("Segoe UI", 11, FontStyle.Bold, GraphicsUnit.Point);
     private static readonly Font HintFont = new("Segoe UI", 10, FontStyle.Regular, GraphicsUnit.Point);
-    private static readonly string HintText = "右键图标添加API";
 
     private const int PopupWidth = 260;
     private const int RowHeight = 32;
@@ -41,13 +42,19 @@ public class BalancePopup : Form
         _updatedAt = updatedAt;
 
         Height = CalcHeight();
-        var screen = Screen.PrimaryScreen!.WorkingArea;
-        Location = new Point(screen.Right - PopupWidth - 8, screen.Bottom - Height - 4);
-
+        Reposition();
         Invalidate();
     }
 
+    private string HintText => AppLanguage == "en" ? "Right-click tray to add API" : "右键图标添加API";
+
     private int CalcHeight() => (_data.Count > 0 ? _data.Count : 1) * RowHeight + AccentHeight;
+
+    private void Reposition()
+    {
+        var screen = Screen.PrimaryScreen!.WorkingArea;
+        Location = new Point(screen.Right - PopupWidth - 12, screen.Bottom - Height - 12);
+    }
 
     private void BuildForm()
     {
@@ -60,8 +67,7 @@ public class BalancePopup : Form
         Width = PopupWidth;
         BackColor = BgColor;
 
-        var screen = Screen.PrimaryScreen!.WorkingArea;
-        Location = new Point(screen.Right - PopupWidth - 8, screen.Bottom - Height - 4);
+        Reposition();
 
         int style = NativeMethods.GetWindowLong(Handle, NativeMethods.GWL_EXSTYLE);
         NativeMethods.SetWindowLong(Handle, NativeMethods.GWL_EXSTYLE, style | NativeMethods.WS_EX_DROPSHADOW);
@@ -75,30 +81,26 @@ public class BalancePopup : Form
         g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        // Background
         using (var bgBrush = new SolidBrush(BgColor))
             g.FillRectangle(bgBrush, ClientRectangle);
 
-        // Border
         using var borderPen = new Pen(BorderColor);
         g.DrawRectangle(borderPen, 0, 0, Width - 1, Height - 1);
 
-        // Top accent line
         using var accentPen = new Pen(AccentColor, AccentHeight);
         g.DrawLine(accentPen, 0, 0, Width, 0);
 
-        // Empty hint
         if (_data.Count == 0)
         {
+            string hint = HintText;
             using var hintBrush = new SolidBrush(MutedColor);
-            var hintSize = g.MeasureString(HintText, HintFont);
-            g.DrawString(HintText, HintFont, hintBrush,
+            var hintSize = g.MeasureString(hint, HintFont);
+            g.DrawString(hint, HintFont, hintBrush,
                 (Width - hintSize.Width) / 2,
                 AccentHeight + (Height - AccentHeight - hintSize.Height) / 2);
             return;
         }
 
-        // Provider rows
         int y = AccentHeight;
         for (int i = 0; i < _data.Count; i++)
         {
@@ -115,11 +117,9 @@ public class BalancePopup : Form
                 g.DrawLine(linePen, 0, y + RowHeight, Width, y + RowHeight);
             }
 
-            // Provider name
             using (var nameBrush = new SolidBrush(TextColor))
                 g.DrawString(info.Provider, ProviderFont, nameBrush, 12, y + 6);
 
-            // Balance value
             Color valueColor;
             string valueText;
 
