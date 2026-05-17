@@ -5,30 +5,26 @@ namespace LLMBalanceMonitor;
 
 public class BalancePopup : Form
 {
-    private readonly List<BalanceInfo> _data;
-    private readonly DateTime _updatedAt;
+    private List<BalanceInfo> _data;
+    private DateTime _updatedAt;
     private int _hoverIndex = -1;
     private static readonly Font ProviderFont = new("Segoe UI", 10, FontStyle.Regular, GraphicsUnit.Point);
     private static readonly Font BalanceFont = new("Segoe UI", 11, FontStyle.Bold, GraphicsUnit.Point);
-    private static readonly Font HeaderFont = new("Segoe UI", 8.5f, FontStyle.Regular, GraphicsUnit.Point);
-    private static readonly Font StatusFont = new("Segoe UI", 8, FontStyle.Regular, GraphicsUnit.Point);
 
-    private const int PopupWidth = 280;
-    private const int RowHeight = 36;
-    private const int HeaderHeight = 38;
-    private const int FooterHeight = 28;
-    private const int PopupPadding = 14;
+    private const int PopupWidth = 260;
+    private const int RowHeight = 32;
+    private const int AccentHeight = 2;
 
-    private static readonly Color BgColor = Color.FromArgb(32, 32, 38);
+    private static readonly Color BgColor = Color.FromArgb(28, 28, 34);
     private static readonly Color BorderColor = Color.FromArgb(60, 60, 70);
-    private static readonly Color HeaderColor = Color.FromArgb(22, 22, 26);
-    private static readonly Color RowEvenColor = Color.FromArgb(38, 38, 44);
+    private static readonly Color AccentColor = Color.FromArgb(0, 180, 120);
+    private static readonly Color RowEvenColor = Color.FromArgb(34, 34, 40);
     private static readonly Color RowHoverColor = Color.FromArgb(45, 45, 52);
     private static readonly Color TextColor = Color.FromArgb(220, 220, 225);
-    private static readonly Color MutedColor = Color.FromArgb(140, 140, 150);
     private static readonly Color GreenColor = Color.FromArgb(60, 200, 140);
     private static readonly Color YellowColor = Color.FromArgb(230, 180, 40);
     private static readonly Color RedColor = Color.FromArgb(220, 80, 70);
+    private static readonly Color MutedColor = Color.FromArgb(140, 140, 150);
 
     public BalancePopup(List<BalanceInfo> data, DateTime updatedAt)
     {
@@ -37,28 +33,30 @@ public class BalancePopup : Form
         BuildForm();
     }
 
+    public void UpdateData(List<BalanceInfo> data, DateTime updatedAt)
+    {
+        _data = data;
+        _updatedAt = updatedAt;
+        Invalidate();
+    }
+
     private void BuildForm()
     {
         int rowCount = Math.Max(_data.Count, 1);
-        int popupHeight = HeaderHeight + rowCount * RowHeight + FooterHeight;
+        Height = AccentHeight + rowCount * RowHeight;
 
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         TopMost = true;
         StartPosition = FormStartPosition.Manual;
-        Size = new Size(PopupWidth, popupHeight);
+        Width = PopupWidth;
         BackColor = BgColor;
 
-        // Position near system tray (bottom-right of primary screen)
         var screen = Screen.PrimaryScreen!.WorkingArea;
-        Location = new Point(screen.Right - PopupWidth - 8, screen.Bottom - popupHeight - 4);
+        Location = new Point(screen.Right - PopupWidth - 8, screen.Bottom - Height - 4);
 
-        // Enable drop shadow
         int style = NativeMethods.GetWindowLong(Handle, NativeMethods.GWL_EXSTYLE);
         NativeMethods.SetWindowLong(Handle, NativeMethods.GWL_EXSTYLE, style | NativeMethods.WS_EX_DROPSHADOW);
-
-        // Click outside to close
-        Deactivate += (_, _) => Close();
 
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
     }
@@ -77,47 +75,32 @@ public class BalancePopup : Form
         using var borderPen = new Pen(BorderColor);
         g.DrawRectangle(borderPen, 0, 0, Width - 1, Height - 1);
 
-        // Header
-        var headerRect = new Rectangle(0, 0, Width, HeaderHeight);
-        using (var headerBrush = new SolidBrush(HeaderColor))
-            g.FillRectangle(headerBrush, headerRect);
-        using var headerPen = new Pen(BorderColor);
-        g.DrawLine(headerPen, 0, HeaderHeight, Width, HeaderHeight);
-
-        // Header text
-        using (var titleBrush = new SolidBrush(TextColor))
-            g.DrawString("Balance Monitor", HeaderFont, titleBrush, PopupPadding, 10);
-
-        // Auto-refresh dot
-        int dotSize = 7;
-        int dotX = Width - PopupPadding - dotSize - 2;
-        int dotY = 14;
-        using var dotBrush = new SolidBrush(GreenColor);
-        g.FillEllipse(dotBrush, dotX, dotY, dotSize, dotSize);
+        // Top accent line
+        using var accentPen = new Pen(AccentColor, AccentHeight);
+        g.DrawLine(accentPen, 0, 0, Width, 0);
 
         // Provider rows
-        int y = HeaderHeight;
+        int y = AccentHeight;
         for (int i = 0; i < _data.Count; i++)
         {
             var info = _data[i];
             var rowRect = new Rectangle(0, y, Width, RowHeight);
 
-            // Row background
             bool isHover = i == _hoverIndex;
             using (var rowBrush = new SolidBrush(isHover ? RowHoverColor : (i % 2 == 0 ? BgColor : RowEvenColor)))
                 g.FillRectangle(rowBrush, rowRect);
 
             if (i < _data.Count - 1)
             {
-                using var linePen = new Pen(BorderColor);
-                g.DrawLine(linePen, PopupPadding, y + RowHeight, Width - PopupPadding, y + RowHeight);
+                using var linePen = new Pen(Color.FromArgb(45, 45, 52));
+                g.DrawLine(linePen, 0, y + RowHeight, Width, y + RowHeight);
             }
 
             // Provider name
             using (var nameBrush = new SolidBrush(TextColor))
-                g.DrawString(info.Provider, ProviderFont, nameBrush, PopupPadding, y + 9);
+                g.DrawString(info.Provider, ProviderFont, nameBrush, 12, y + 6);
 
-            // Balance value with color
+            // Balance value
             Color valueColor;
             string valueText;
 
@@ -130,7 +113,6 @@ public class BalancePopup : Form
             {
                 string prefix = info.Currency == "CNY" ? "¥" : "$";
                 valueText = $"{prefix}{info.Balance:F2}";
-
                 if (info.Balance < 1) valueColor = RedColor;
                 else if (info.Balance < 10) valueColor = YellowColor;
                 else valueColor = GreenColor;
@@ -150,35 +132,16 @@ public class BalancePopup : Form
             {
                 var valueSize = g.MeasureString(valueText, BalanceFont);
                 g.DrawString(valueText, BalanceFont, valueBrush,
-                    Width - PopupPadding - valueSize.Width, y + 8);
-            }
-
-            // Usage subtitle for OpenRouter
-            if (info.Usage.HasValue && info.Usage > 0)
-            {
-                string usageText = $"used: ${info.Usage:F4}";
-                using var usageBrush = new SolidBrush(MutedColor);
-                g.DrawString(usageText, StatusFont, usageBrush,
-                    Width - PopupPadding - 100, y + RowHeight - 16);
+                    Width - 12 - valueSize.Width, y + 5);
             }
 
             y += RowHeight;
         }
-
-        // Footer
-        var footerRect = new Rectangle(0, y, Width, FooterHeight);
-        using (var footerBrush = new SolidBrush(HeaderColor))
-            g.FillRectangle(footerBrush, footerRect);
-
-        string footer = $"Updated {_updatedAt:HH:mm:ss}  ·  " +
-                        $"{_data.Count(r => r.Status is "OK" or "Connected" or "Free Tier")}/{_data.Count} OK";
-        using (var footerBrush = new SolidBrush(MutedColor))
-            g.DrawString(footer, StatusFont, footerBrush, PopupPadding, y + 7);
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
-        int row = (e.Y - HeaderHeight) / RowHeight;
+        int row = (e.Y - AccentHeight) / RowHeight;
         int newHover = (row >= 0 && row < _data.Count) ? row : -1;
         if (newHover != _hoverIndex)
         {
