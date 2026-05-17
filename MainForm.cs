@@ -5,10 +5,10 @@ public class MainForm : Form
     private readonly AppConfig _config;
     private readonly BalanceService _service = new();
     private readonly System.Windows.Forms.Timer _refreshTimer;
+    private readonly BalancePopup _popup;
     private NotifyIcon _trayIcon = null!;
     private List<BalanceInfo> _lastResults = new();
     private DateTime _lastUpdatedAt;
-    private BalancePopup? _currentPopup;
     private bool _refreshing;
 
     public MainForm()
@@ -17,9 +17,17 @@ public class MainForm : Form
         EnsureDefaultProviders();
         _config.Save();
 
-        BuildTrayIcon();
+        _popup = new BalancePopup(_lastResults, _lastUpdatedAt);
+        _popup.FormClosing += (_, e) =>
+        {
+            e.Cancel = true;
+            _popup.Hide();
+        };
 
-        _refreshTimer = new System.Windows.Forms.Timer { Interval = _config.RefreshIntervalSeconds * 1000 };
+        BuildTrayIcon();
+        _popup.Show();
+
+        _refreshTimer = new System.Windows.Forms.Timer { Interval = 30_000 };
         _refreshTimer.Tick += async (_, _) => await RefreshAsync();
         _refreshTimer.Start();
 
@@ -43,15 +51,17 @@ public class MainForm : Form
     private void BuildTrayIcon()
     {
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Balances", null, (_, _) => ShowPopup());
+        menu.Items.Add("Balances", null, (_, _) => TogglePopup());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Refresh Now", null, async (_, _) => await RefreshAsync());
         menu.Items.Add("Settings", null, (_, _) => ShowSettings());
+        menu.Items.Add("Language", null, (_, _) => ShowLanguage());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) =>
         {
             _trayIcon.Visible = false;
             _refreshTimer.Stop();
+            _popup.Close();
             Application.Exit();
         });
 
@@ -62,19 +72,20 @@ public class MainForm : Form
             ContextMenuStrip = menu,
             Visible = true,
         };
-        _trayIcon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ShowPopup(); };
+        _trayIcon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) TogglePopup(); };
     }
 
-    private void ShowPopup()
+    private void TogglePopup()
     {
-        if (_currentPopup is { IsDisposed: false })
+        if (_popup.Visible)
         {
-            _currentPopup.Activate();
-            return;
+            _popup.Hide();
         }
-
-        _currentPopup = new BalancePopup(_lastResults, _lastUpdatedAt);
-        _currentPopup.Show();
+        else
+        {
+            _popup.Show();
+            _popup.Activate();
+        }
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
@@ -104,6 +115,8 @@ public class MainForm : Form
             _lastResults = results;
             _lastUpdatedAt = DateTime.Now;
 
+            _popup.UpdateData(results, _lastUpdatedAt);
+
             int ok = results.Count(r => r.Status is "OK" or "Connected" or "Free Tier");
             _trayIcon.Text = $"LLM Balance Monitor\n{ok}/{results.Count} OK";
         }
@@ -115,6 +128,35 @@ public class MainForm : Form
         {
             _refreshing = false;
         }
+    }
+
+    private void ShowLanguage()
+    {
+        var form = new Form
+        {
+            Text = "Language / 语言",
+            Size = new Size(280, 175),
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            MaximizeBox = false,
+            MinimizeBox = false,
+            StartPosition = FormStartPosition.CenterParent,
+            Icon = IconGenerator.CreateAppIcon(),
+        };
+
+        var label = new Label { Text = "Select display language:", Location = new Point(20, 18), Size = new Size(220, 22) };
+        var rbZh = new RadioButton { Text = "中文", Location = new Point(20, 48), Size = new Size(220, 24), Checked = _config.Language != "en" };
+        var rbEn = new RadioButton { Text = "English", Location = new Point(20, 74), Size = new Size(220, 24), Checked = _config.Language == "en" };
+
+        var btnOk = new Button { Text = "OK", Location = new Point(100, 108), Size = new Size(80, 28) };
+        btnOk.Click += (_, _) =>
+        {
+            _config.Language = rbEn.Checked ? "en" : "zh";
+            _config.Save();
+            form.Close();
+        };
+
+        form.Controls.AddRange(new Control[] { label, rbZh, rbEn, btnOk });
+        form.ShowDialog(this);
     }
 
     private void ShowSettings()
